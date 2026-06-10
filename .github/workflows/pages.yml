@@ -1,0 +1,45 @@
+name: Publish project notebook
+
+# Regenerates docs/index.html from repo state and deploys it to GitHub Pages.
+# Runs on pushes to main; can also be triggered manually. The HTML itself is not
+# committed (ADR-07) — it is built fresh here from scripts/ + the git history.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full history so the commit timeline is complete
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generate notebook
+        run: python scripts/generate_overview.py
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp docs/index.html _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

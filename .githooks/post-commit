@@ -1,0 +1,15 @@
+#!/bin/sh
+# post-commit: regenerate the living notebook (docs/index.html) from repo state.
+# Runs AFTER the commit, so it can never block it; stays silent on any failure.
+# Enable once per clone with:  git config core.hooksPath .githooks
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+gen="$root/scripts/generate_overview.py"
+[ -f "$gen" ] || exit 0
+
+if command -v uv >/dev/null 2>&1; then
+  ( cd "$root" && uv run python "$gen" ) >/dev/null 2>&1 && exit 0
+fi
+( cd "$root" && python "$gen" ) >/dev/null 2>&1 \
+  || ( cd "$root" && py "$gen" ) >/dev/null 2>&1 \
+  || true
+exit 0
