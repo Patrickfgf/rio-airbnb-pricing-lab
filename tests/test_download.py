@@ -41,3 +41,18 @@ def test_download_file_writes_with_browser_headers(monkeypatch, tmp_path):
     assert dest.read_bytes() == b"gzipped-bytes"
     assert "Mozilla" in seen["headers"]["User-Agent"]
     assert seen["headers"]["Referer"].startswith("https://insideairbnb.com")
+
+
+def test_build_url_rejects_non_date():
+    # SSRF / path-breakout guard: a non-date string must never reach the URL.
+    import pytest
+
+    with pytest.raises(ValueError):
+        dl.build_url("../../etc/passwd", "listings")
+
+
+def test_build_url_rejects_unknown_file():
+    import pytest
+
+    with pytest.raises(ValueError):
+        dl.build_url("2026-03-30", "reviews")  # not in DUMP_FILES for Phase 1

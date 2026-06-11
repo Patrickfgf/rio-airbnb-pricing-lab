@@ -27,6 +27,8 @@ def _agg_sql(src: str, *, has_price: bool) -> str:
     filter on price: blocked days often carry no price, so filtering would bias
     booked_rate downward; MEDIAN ignores NULLs anyway.
     """
+    if not _VALID_IDENT.match(src):  # defence-in-depth: never interpolate an unchecked name
+        raise ValueError(f"Invalid relation name: {src!r}")
     cal_price_expr = (
         "CAST(REPLACE(REPLACE(price, '$', ''), ',', '') AS DOUBLE)"
         if has_price
