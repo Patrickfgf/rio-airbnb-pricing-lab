@@ -24,6 +24,9 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Content-generation scripts (PT-BR study notebook) are not part of the pipeline
+# library; their long content strings shouldn't be held to the 100-char limit.
+extend-exclude = ["scripts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
