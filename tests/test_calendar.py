@@ -19,3 +19,15 @@ def test_has_calendar_price_and_keys(raw_calendar):
     out = aggregate_calendar(con, raw_calendar)
     assert {"listing_id", "month", "dow", "median_cal_price", "booked_rate"}.issubset(out.columns)
     assert (out["median_cal_price"] == 500.0).all()
+
+
+def test_aggregates_when_price_column_absent(raw_calendar):
+    # The real Inside Airbnb Rio calendar dump has no `price` column. booked_rate
+    # must still compute; median_cal_price falls back to NULL (NaN in pandas).
+    no_price = raw_calendar.drop(columns=["price"])
+    con = duckdb.connect()
+    out = aggregate_calendar(con, no_price)
+    assert out["median_cal_price"].isna().all()
+    by_listing = out.groupby("listing_id")["booked_rate"].mean().round(3).to_dict()
+    assert by_listing[1] == 0.6
+    assert by_listing[2] == 0.2
