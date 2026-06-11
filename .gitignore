@@ -1,0 +1,30 @@
+# Data (reconstructible from the dump; never commit)
+# Anchored to repo root so it does NOT match the src/data/ package.
+/data/
+*.duckdb
+*.duckdb.wal
+*.csv.gz
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Claude Code (local agent state)
+.claude/
+
+# Generated living notebook (rebuilt by the post-commit hook / Pages CI — see ADR-07)
+docs/index.html
+_site/
