@@ -7,6 +7,11 @@
 > on the actual data and must not be invented before we can see it.
 >
 > **For agentic workers (after expansion):** REQUIRED SUB-SKILL: superpowers:subagent-driven-development.
+>
+> **Phase-1 data reality (confirmed by the 2026-06-11 smoke run on snapshot `2026-03-30`):**
+> - **39,816** analyzable curated listings; **3,424,596** seasonality rows (listing × month × dow).
+> - `listings.csv` **does** carry `estimated_occupancy_l365d` / `estimated_revenue_l365d` → use as the occupancy **benchmark** to validate the SF-model proxy.
+> - ⚠️ **The Rio `calendar.csv` dump has NO `price` column** (only `listing_id,date,available,minimum_nights,maximum_nights`). So `median_cal_price` is NULL and there is **no per-date dynamic price** to mine. The price anchor is `listings.price`; calendar seasonality is a **pure availability (booked_rate)** signal. Any Phase-2 "dynamic price by date/season" idea must be re-scoped around this.
 
 **Goal:** On top of the Phase-1 curated tables, build (1) an interpretable **hedonic price model** (log-price regression with neighbourhood fixed effects) and (2) the **rules + statistics recommender** that returns a suggested price *range*, expected occupancy, expected RevPAN, and the top drivers — all from pure, tested functions in `src/model/`.
 
