@@ -34,9 +34,12 @@ def compute_vif(X: pd.DataFrame) -> pd.Series:
 
 def fit_hedonic(X: pd.DataFrame, y: pd.Series, neighbourhood: pd.Series) -> HedonicResult:
     Xnum = X.drop(columns=[c for c in ("cap_bucket",) if c in X.columns]).astype(float)
+    nb_frame = neighbourhood.rename(
+        "nb"
+    ).to_frame()  # canonical name regardless of caller's Series name
     enc = OneHotEncoder(drop="first", sparse_output=False, handle_unknown="ignore")
-    fe = enc.fit_transform(neighbourhood.to_frame())
-    fe_df = pd.DataFrame(fe, columns=enc.get_feature_names_out(["nb"]), index=Xnum.index)
+    fe = enc.fit_transform(nb_frame)
+    fe_df = pd.DataFrame(fe, columns=enc.get_feature_names_out(), index=Xnum.index)
     design = sm.add_constant(pd.concat([Xnum, fe_df], axis=1), has_constant="add")
 
     model = sm.OLS(y.to_numpy(), design.to_numpy()).fit()

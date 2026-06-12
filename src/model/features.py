@@ -27,6 +27,16 @@ def _collapse_top_k(s: pd.Series, k: int) -> pd.Series:
     return s.where(s.isin(top), "Other")
 
 
+def _to_float64(s: pd.Series) -> pd.Series:
+    """Coerce any curated column to numpy float64 (NA -> NaN).
+
+    Curated parquet carries pandas nullable ExtensionTypes (Int64, boolean), not numpy dtypes.
+    `pd.to_numeric` leaves a nullable `boolean` column untouched (so a later `.fillna(0)` raises
+    "Invalid value '0' for dtype 'boolean'"), hence the explicit Float64 hop before numpy float64.
+    """
+    return pd.to_numeric(s, errors="coerce").astype("Float64").astype("float64")
+
+
 def build_model_matrix(listings: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, FeatureMeta]:
     df = listings.loc[listings["price"] > 0].reset_index(drop=True)
     y = np.log(df["price"].astype(float)).rename("log_price")
@@ -41,16 +51,16 @@ def build_model_matrix(listings: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series,
 
     numeric = pd.DataFrame(
         {
-            "accommodates": pd.to_numeric(df["accommodates"], errors="coerce"),
-            "bedrooms": pd.to_numeric(df["bedrooms"], errors="coerce"),
-            "bathrooms_num": pd.to_numeric(df["bathrooms_num"], errors="coerce"),
-            "min_nights": pd.to_numeric(df["min_nights"], errors="coerce"),
+            "accommodates": _to_float64(df["accommodates"]),
+            "bedrooms": _to_float64(df["bedrooms"]),
+            "bathrooms_num": _to_float64(df["bathrooms_num"]),
+            "min_nights": _to_float64(df["min_nights"]),
         }
     )
     numeric = numeric.fillna(numeric.median(numeric_only=True))
 
-    superhost = pd.to_numeric(df["host_is_superhost"], errors="coerce")
-    no_review = (pd.to_numeric(df["number_of_reviews"], errors="coerce").fillna(0) == 0).astype(int)
+    superhost = _to_float64(df["host_is_superhost"])
+    no_review = (_to_float64(df["number_of_reviews"]).fillna(0) == 0).astype(int)
     cap_bucket = pd.cut(
         numeric["accommodates"], bins=config.CAP_BUCKET_EDGES, labels=config.CAP_BUCKET_LABELS
     )

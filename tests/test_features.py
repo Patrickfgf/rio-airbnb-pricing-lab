@@ -19,12 +19,13 @@ def toy_listings():
             "property_type": (  # 11 distinct > PROPERTY_TYPE_TOP_K=8 -> collapse fires
                 ["Entire rental unit"] * 50 + [f"Exotic {i}" for i in range(10)]
             ),
-            "accommodates": rng.integers(1, 9, n),
-            "bedrooms": rng.integers(1, 4, n),
-            "beds": rng.integers(1, 5, n),
+            # Curated parquet dtypes: Int64 / boolean nullable ExtensionTypes (NOT numpy int/float).
+            "accommodates": pd.array(rng.integers(1, 9, n), dtype="Int64"),
+            "bedrooms": pd.array(rng.integers(1, 4, n), dtype="Int64"),
+            "beds": pd.array(rng.integers(1, 5, n), dtype="Int64"),
             "bathrooms_num": rng.uniform(1, 3, n),
-            "min_nights": rng.integers(1, 30, n),
-            "host_is_superhost": rng.integers(0, 2, n).astype(float),
+            "min_nights": pd.array(rng.integers(1, 30, n), dtype="Int64"),
+            "host_is_superhost": pd.array([True, False, None] * 20, dtype="boolean"),
             "number_of_reviews": [0] * 12 + list(rng.integers(1, 50, n - 12)),
             "number_of_reviews_ltm": rng.integers(0, 20, n),
             "availability_365": rng.integers(0, 365, n),
@@ -70,3 +71,11 @@ def test_property_type_collapsed(toy_listings):
     X, y, meta = build_model_matrix(toy_listings)
     pt_cols = [c for c in X.columns if c.startswith("property_type_")]
     assert any(c.endswith("Other") for c in pt_cols)
+
+
+def test_nullable_extension_dtypes(toy_listings):
+    # curated parquet carries boolean / Int64 nullable dtypes; conversion must not raise
+    X, y, meta = build_model_matrix(toy_listings)
+    assert str(X["accommodates"].dtype) == "float64"
+    assert X["host_is_superhost"].notna().all()  # NA filled to 0.0
+    assert X["superhost_missing"].sum() == 20  # 20 None in the fixture

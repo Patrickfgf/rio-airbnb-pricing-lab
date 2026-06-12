@@ -36,3 +36,15 @@ def test_vif_flags_collinear_pair():
     X = pd.DataFrame({"a": a, "a_copy": a + rng.normal(0, 1e-3, 300), "b": rng.normal(0, 1, 300)})
     vif = compute_vif(X)
     assert vif.loc["a"] > 10 and vif.loc["b"] < 5
+
+
+def test_neighbourhood_series_name_agnostic():
+    # production passes a Series named "neighbourhood", not "nb"; the FE encoder must not care
+    rng = np.random.default_rng(4)
+    n = 200
+    acc = rng.integers(1, 6, n)
+    nb = pd.Series(rng.choice(["X", "Y", "Z"], n), name="neighbourhood")
+    y = pd.Series(5 + 0.2 * acc + rng.normal(0, 0.1, n), name="log_price")
+    res = fit_hedonic(pd.DataFrame({"accommodates": acc}), y, nb)
+    assert "accommodates" in res.coefs.index
+    assert res.adj_r2 > 0.0
