@@ -6,6 +6,7 @@ from src.schemas import (
     validate_curated_listings,
     validate_curated_occupancy,
     validate_curated_seasonality,
+    validate_curated_seasonality_detrended,
 )
 from src.transform.listings import build_curated_listings
 
@@ -65,3 +66,48 @@ def test_seasonality_duplicate_key_fails():
     )
     with pytest.raises(SchemaError):
         validate_curated_seasonality(df)
+
+
+def _detrended_df() -> pd.DataFrame:
+    """Valid market-level detrended seasonality (grain = 1 row/date).
+
+    Mirrors what `seasonality_from_table` emits: horizon_days may be negative
+    (calendar dates predating the snapshot) and is_edge is a plain bool.
+    """
+    return pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2026-01-01", "2026-01-02", "2026-01-03"]),
+            "dow": [4, 5, 6],
+            "horizon_days": [-89, -88, -87],
+            "unavail_rate": [0.0, 0.5, 0.5],
+            "baseline": [0.25, 0.30, 0.40],
+            "event_uplift": [-0.25, 0.20, 0.10],
+            "is_edge": [True, True, False],
+        }
+    )
+
+
+def test_valid_curated_seasonality_detrended():
+    validate_curated_seasonality_detrended(_detrended_df())  # should not raise
+
+
+def test_seasonality_detrended_duplicate_date_fails():
+    df = _detrended_df()
+    dup = pd.concat([df, df.iloc[[0]]], ignore_index=True)  # repeats 2026-01-01
+    with pytest.raises(SchemaError):
+        validate_curated_seasonality_detrended(dup)
+
+
+def test_seasonality_detrended_unavail_rate_out_of_range_fails():
+    df = _detrended_df().copy()
+    df.loc[0, "unavail_rate"] = 1.5  # outside [0, 1]
+    with pytest.raises(SchemaError):
+        validate_curated_seasonality_detrended(df)
+
+
+def test_seasonality_detrended_event_uplift_out_of_range_fails():
+    # event_uplift is the only asymmetric range ([-1, 1]); guard it explicitly.
+    df = _detrended_df().copy()
+    df.loc[0, "event_uplift"] = 1.5  # outside [-1, 1]
+    with pytest.raises(SchemaError):
+        validate_curated_seasonality_detrended(df)
