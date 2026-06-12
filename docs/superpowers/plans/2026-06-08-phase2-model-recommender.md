@@ -1,5 +1,11 @@
 # Phase 2 — Hedonic Model + Recommender — Plan Outline
 
+> **⚠️ SUPERSEDED (2026-06-12) by `2026-06-12-phase2-positioning-advisor.md`.** The 2026-06-12 EDA +
+> adversarial verification proved the RevPAN-maximizing recommender below is **not identifiable** from
+> this snapshot (occupancy is reviews-driven `corr 0.957`; `revenue == price × occupancy` for 73.4% of
+> rows → RevPAN is circular; the price→occupancy slope collapses 90% once reviews are controlled). Phase 2
+> was re-scoped to a **price-positioning advisor**. This outline is kept for decision history only.
+
 > **STATUS: OUTLINE.** This is the scope + task skeleton. It will be expanded into a full
 > placeholder-free, step-by-step plan (like Phase 1) **at the Phase-2 checkpoint**, once the
 > Phase-1 curated tables exist and their real distributions can be inspected. The concrete
