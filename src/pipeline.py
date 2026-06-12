@@ -20,10 +20,12 @@ from src.schemas import (
     validate_curated_listings,
     validate_curated_occupancy,
     validate_curated_seasonality,
+    validate_curated_seasonality_detrended,
 )
 from src.transform.calendar import aggregate_calendar_table
 from src.transform.listings import build_curated_listings
 from src.transform.occupancy import estimate_occupancy
+from src.transform.seasonality import seasonality_from_table
 
 
 def _sha256(path: Path) -> str:
@@ -64,12 +66,21 @@ def build_curated(
         seasonality = aggregate_calendar_table(con, "raw_calendar")
         validate_curated_seasonality(seasonality)
 
+        # Horizon-detrended, market-level view of the same calendar (grain 1 row/date).
+        seasonality_detrended = seasonality_from_table(
+            con, "raw_calendar", snapshot_date=snapshot_date
+        )
+        validate_curated_seasonality_detrended(seasonality_detrended)
+
         booked = seasonality.groupby("listing_id")["booked_rate"].mean()
         occupancy = estimate_occupancy(listings, booked)
         validate_curated_occupancy(occupancy)
 
         listings.to_parquet(curated_dir / "listings.parquet", index=False)
         seasonality.to_parquet(curated_dir / "calendar_seasonality.parquet", index=False)
+        seasonality_detrended.to_parquet(
+            curated_dir / "calendar_seasonality_detrended.parquet", index=False
+        )
         occupancy.to_parquet(curated_dir / "occupancy.parquet", index=False)
 
         manifest = {
@@ -78,6 +89,7 @@ def build_curated(
             "source": build_url(snapshot_date, "listings"),
             "n_listings": int(len(listings)),
             "n_seasonality_rows": int(len(seasonality)),
+            "n_seasonality_detrended_rows": int(len(seasonality_detrended)),
             "has_estimated_occupancy": "estimated_occupancy_l365d" in listings.columns,
             "raw_files": {
                 f"{name}.csv.gz": {
@@ -92,6 +104,7 @@ def build_curated(
             "listings": listings,
             "occupancy": occupancy,
             "seasonality": seasonality,
+            "seasonality_detrended": seasonality_detrended,
             "manifest": manifest,
         }
     finally:
