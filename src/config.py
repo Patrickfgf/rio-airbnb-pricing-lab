@@ -50,3 +50,30 @@ PRICE_WINSOR_UPPER_Q = 0.99  # clip extreme high prices (luxury outliers)
 SF_REVIEW_RATE = 0.5  # fraction of stays that leave a review (Inside Airbnb assumption)
 SF_AVG_LENGTH_OF_STAY = 4.0  # nights; Rio-tunable in Phase 2 from data
 SF_MAX_OCCUPANCY = 0.70  # cap to avoid implausible >70% annual occupancy
+
+# --- Phase 2: model feature governance (see docs/.../2026-06-12-phase2-positioning-advisor.md) ---
+# Columns excluded from the hedonic feature matrix.
+MODEL_DROP_ALL_NULL = (  # 100% null in the Rio 2026-03-30 dump (source reality)
+    "instant_bookable",
+    "host_response_time",
+    "host_response_rate",
+    "host_acceptance_rate",
+)
+MODEL_DROP_LEAKAGE = (  # outcomes / forward-looking -- never predict price with these
+    "availability_365",
+    "estimated_occupancy_l365d",
+    "estimated_revenue_l365d",
+)
+MODEL_DROP_COLLINEAR = ("beds",)  # net coef sign-flips (-0.025, p~0); +0.002 adjR2 only
+MIN_NEIGHBOURHOOD_N = 30  # neighbourhoods with fewer listings are pooled to "Other"
+PROPERTY_TYPE_TOP_K = 8  # keep top-K property_type levels, collapse the rest to "Other"
+# Comparable-set hierarchy, widest-last; each tier is a tuple of grouping columns.
+COMPARABLE_TIERS = (
+    ("neighbourhood", "room_type", "cap_bucket"),
+    ("neighbourhood", "room_type"),
+    ("room_type", "cap_bucket"),
+    ("room_type",),
+)
+SHRINKAGE_PRIOR_STRENGTH = 30.0  # pseudo-count m: slice mean shrinks toward parent by n/(n+m)
+CAP_BUCKET_EDGES = (0, 2, 4, 6, 999)  # accommodates -> 1-2, 3-4, 5-6, 7+
+CAP_BUCKET_LABELS = ("1-2", "3-4", "5-6", "7+")
