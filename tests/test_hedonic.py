@@ -52,3 +52,61 @@ def test_neighbourhood_series_name_agnostic():
     res = fit_hedonic(pd.DataFrame({"accommodates": acc}), y, nb)
     assert "accommodates" in res.coefs.index
     assert res.adj_r2 > 0.0
+
+
+def test_predict_price_smearing_corrects_jensen_bias():
+    # log-normal prices: E[price|x] = exp(mu) * exp(sigma^2/2). Naive exp(mu_hat) underestimates;
+    # Duan's smearing (mean exp(resid)) recovers the multiplicative correction.
+    rng = np.random.default_rng(11)
+    n = 800
+    acc = rng.integers(1, 8, n).astype(float)
+    nb = rng.choice(["A", "B"], n)
+    sigma = 0.4
+    log_price = 5.0 + 0.2 * acc + (nb == "B") * 0.3 + rng.normal(0, sigma, n)
+    res = fit_hedonic(
+        pd.DataFrame({"accommodates": acc}),
+        pd.Series(log_price, name="log_price"),
+        pd.Series(nb, name="nb"),
+    )
+    assert res.fitted.smearing_factor > 1.0  # residual variance -> upward correction
+    x_row = pd.Series({"accommodates": 4.0})
+    smeared = res.fitted.predict_price(x_row, "A")
+    naive = float(np.exp(res.fitted.predict_log_price(x_row, "A")))
+    assert smeared > naive  # corrects the Jensen underestimate upward
+    true_mean = np.exp(5.0 + 0.2 * 4.0) * np.exp(sigma**2 / 2)
+    assert abs(smeared - true_mean) / true_mean < 0.10  # within 10% of the true conditional mean
+
+
+def test_predict_unseen_neighbourhood_is_finite():
+    rng = np.random.default_rng(12)
+    n = 200
+    acc = rng.integers(1, 6, n).astype(float)
+    nb = rng.choice(["A", "B"], n)
+    y = pd.Series(5 + 0.2 * acc + rng.normal(0, 0.1, n), name="log_price")
+    res = fit_hedonic(pd.DataFrame({"accommodates": acc}), y, pd.Series(nb, name="nb"))
+    price = res.fitted.predict_price(pd.Series({"accommodates": 3.0}), "Atlantis")  # unseen FE
+    assert np.isfinite(price) and price > 0
+
+
+def test_predicted_price_feeds_recommender_in_brl():
+    from src.model.recommender import recommend_price
+
+    rng = np.random.default_rng(13)
+    n = 300
+    acc = rng.integers(1, 8, n).astype(float)
+    nb = rng.choice(["A", "B"], n)
+    y = pd.Series(6 + 0.15 * acc + rng.normal(0, 0.3, n), name="log_price")
+    res = fit_hedonic(pd.DataFrame({"accommodates": acc}), y, pd.Series(nb, name="nb"))
+    hedonic_point = res.fitted.predict_price(pd.Series({"accommodates": 4.0}), "A")
+    assert hedonic_point > 0
+    rec = recommend_price(
+        hedonic_point=hedonic_point,
+        peer_median=hedonic_point * 0.9,
+        peer_iqr=hedonic_point * 0.3,
+        price_percentile=0.5,
+        top_drivers=[],
+        demand_note="",
+    )
+    # anchor sits between the two PRICE-space inputs — proves no log/price unit mix
+    lo, hi = sorted((hedonic_point, hedonic_point * 0.9))
+    assert lo <= rec.anchor <= hi

@@ -475,7 +475,12 @@ PHASES = [
             "Deploy no Streamlit Community Cloud."
         ),
         "tasks": [
-            {"n": 1, "title": "predict() por-listing exposto no hedônico", "key_file": None},
+            {
+                "n": 1,
+                "title": "predict() por-listing exposto no hedônico",
+                "key_file": None,
+                "done": True,
+            },
             {
                 "n": 2,
                 "title": "Notebook EDA narrado (Restart & Run All limpo)",
@@ -506,6 +511,25 @@ PHASES = [
 # Diário de bordo — registro incremental (entrada mais recente primeiro)
 # --------------------------------------------------------------------------- #
 DIARY = [
+    {
+        "date": "2026-06-14",
+        "title": "Fase 3 começa: predict() por-anúncio fecha o contrato log↔preço",
+        "body": (
+            "Primeiro tijolo da Fase 3 e o único achado da auditoria que tocava "
+            "modelagem: o hedônico ajusta <code>log(price)</code>, mas o app precisa "
+            "de reais. <code>exp(média do log)</code> recupera a mediana, não a "
+            "média — subestima por <code>exp(σ²/2)</code> (desigualdade de Jensen). "
+            "Exponho <code>FittedHedonic.predict_price()</code> que devolve um ponto "
+            "em <strong>espaço de preço</strong>, corrigido pelo <strong>estimador "
+            "de smearing de Duan</strong> (<code>mean(exp(resíduos))</code>) — não "
+            "-paramétrico, sem assumir resíduos normais (preço de aluguel é "
+            "assimétrico). Testes provam que ele bate a média condicional real "
+            "(dentro de 10%), tolera bairro não-visto (FE zera) e alimenta o "
+            "<code>recommend_price</code> em reais — sem mistura de unidades. "
+            "Descartei a fórmula normal <code>exp(σ̂²/2)</code>: mais simples, "
+            "porém assume normalidade. 86 testes verdes."
+        ),
+    },
     {
         "date": "2026-06-14",
         "title": "Auditoria adversarial da Fase 2 + blindagem de robustez",
