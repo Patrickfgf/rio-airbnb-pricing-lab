@@ -58,6 +58,14 @@ def build_model_matrix(listings: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series,
         }
     )
     numeric = numeric.fillna(numeric.median(numeric_only=True))
+    # An all-NULL column has a NaN median, so fillna is a no-op and NaN leaks into the OLS design
+    # (statsmodels would silently drop rows or error). Fail loudly at the feature boundary instead.
+    residual_nan = [c for c in numeric.columns if numeric[c].isna().any()]
+    if residual_nan:
+        raise ValueError(
+            f"Numeric feature column(s) entirely NULL, cannot median-impute: {residual_nan}. "
+            "Drop the column upstream or supply non-null data."
+        )
 
     superhost = _to_float64(df["host_is_superhost"])
     no_review = (_to_float64(df["number_of_reviews"]).fillna(0) == 0).astype(int)

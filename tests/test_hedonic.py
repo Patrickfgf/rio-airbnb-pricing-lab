@@ -21,13 +21,17 @@ def test_beats_trivial_baseline():
     rng = np.random.default_rng(2)
     n = 400
     acc = rng.integers(1, 8, n)
-    y = 5 + 0.3 * acc + rng.normal(0, 0.2, n)
+    nb = rng.choice(["A", "B"], n)
+    # real neighbourhood effect AND accommodates effect; the FE-only median baseline ignores
+    # accommodates, so a useful model must beat it — not just the weak global median.
+    y = 5 + 0.3 * acc + (nb == "B") * 0.5 + rng.normal(0, 0.2, n)
     res = fit_hedonic(
         pd.DataFrame({"accommodates": acc}),
         pd.Series(y, name="log_price"),
-        pd.Series(["A"] * n, name="nb"),
+        pd.Series(nb, name="nb"),
     )
     assert res.model_mae < res.baseline_median_mae
+    assert res.model_mae < res.baseline_nb_median_mae  # must beat the per-neighbourhood median too
 
 
 def test_vif_flags_collinear_pair():

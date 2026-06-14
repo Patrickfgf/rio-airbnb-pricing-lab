@@ -507,6 +507,32 @@ PHASES = [
 # --------------------------------------------------------------------------- #
 DIARY = [
     {
+        "date": "2026-06-14",
+        "title": "Auditoria adversarial da Fase 2 + blindagem de robustez",
+        "body": (
+            "Antes de construir a Fase 3 em cima do modelo, rodei uma auditoria "
+            "multi-dimensão (12 agentes: estatística, dados/pandas, qualidade, "
+            "testes) com verificação adversarial — cada achado HIGH/CRITICAL "
+            "submetido a um cético que tenta refutá-lo. Resultado tranquilizador: "
+            "<strong>nenhum bug ativo</strong>; os 3 “confirmados” foram rebaixados "
+            "para MEDIUM/LOW. O tema real: o código não se defendia contra os tipos "
+            "e entradas <em>reais</em>. Blindei: <code>is_edge</code> nullable "
+            "<code>boolean</code> (mesma classe do gotcha de ExtensionType), faixas "
+            "e tamanhos nas fronteiras (<code>validation</code> exige len igual; "
+            "<code>recommend_price</code> valida entradas), <code>cv=None</code> "
+            "quando a fatia tem 1 linha, falha-alto se uma coluna numérica é toda "
+            "NULL, e — no espírito do módulo — honestidade: cap-hit agora reportado "
+            "no proxy <em>e</em> no benchmark, e a correlação vira "
+            "<code>None</code> (não um NaN disfarçado de número) no cohort de "
+            "ocupação estrutural-zero. Policy do recomendador saiu de literais "
+            "inline para constantes em <code>config</code>. <strong>70 → 83 "
+            "testes</strong>, ruff limpo. O único achado que toca modelagem — o "
+            "hedônico prevê em <code>log(price)</code> e o recomendador espera "
+            "reais — fica para a Fase 3 (o <code>predict()</code> exponencia com "
+            "correção de smearing de Duan)."
+        ),
+    },
+    {
         "date": "2026-06-12",
         "title": "Fase 2 entregue: advisor de posicionamento (PR #2 mergeado)",
         "body": (

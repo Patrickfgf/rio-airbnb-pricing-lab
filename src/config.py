@@ -75,5 +75,13 @@ COMPARABLE_TIERS = (
     ("room_type",),
 )
 SHRINKAGE_PRIOR_STRENGTH = 30.0  # pseudo-count m: slice mean shrinks toward parent by n/(n+m)
+MIN_TIER_N = 30  # min peers to accept a comparable tier before widening (distinct from m above)
 CAP_BUCKET_EDGES = (0, 2, 4, 6, 999)  # accommodates -> 1-2, 3-4, 5-6, 7+
 CAP_BUCKET_LABELS = ("1-2", "3-4", "5-6", "7+")
+
+# --- Phase 2: positioning policy (recommender.py) — author-tunable knobs ---
+HEDONIC_MARKET_BLEND_WEIGHT = 0.5  # anchor = w*hedonic_point + (1-w)*peer_median
+BAND_IQR_FRACTION = 0.5  # half-band width as a fraction of the peer IQR
+ANCHOR_FLOOR_FRACTION = 0.5  # never let `low` fall below this fraction of the anchor
+POSITION_BELOW_PCTL = 0.33  # price_percentile < this -> "below market"
+POSITION_ABOVE_PCTL = 0.66  # price_percentile > this -> "above market"
