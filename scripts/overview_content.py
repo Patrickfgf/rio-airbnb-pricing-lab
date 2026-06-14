@@ -67,7 +67,7 @@ PIPELINE = [
     {
         "stage": "model",
         "label": "src/model (fase 2)",
-        "desc": "Modelo hedônico interpretável + recomendador de preço/ocupação.",
+        "desc": "Modelo hedônico interpretável (log-preço + efeitos fixos de bairro) + advisor de posicionamento: faixa sugerida e onde o anúncio cai vs. os pares. Ver ADR-08.",
     },
     {
         "stage": "app",
@@ -109,6 +109,16 @@ STACK = [
         "name": "numpy",
         "role": "Numérico",
         "why": "Base vetorizada para os cálculos de ocupação e features.",
+    },
+    {
+        "name": "statsmodels",
+        "role": "Modelo hedônico (OLS)",
+        "why": "OLS de log-preço com efeitos fixos de bairro e <code>summary()</code> interpretável (coeficientes, p-valores, R² ajustado). Num modelo que precisa ser <em>defensável</em>, a interpretabilidade vale mais que 2 pontos de erro. Ver ADR-08.",
+    },
+    {
+        "name": "scikit-learn",
+        "role": "Pré-processo + baselines",
+        "why": "<code>OneHotEncoder</code> para as categóricas e os baselines triviais (mediana global, mediana por bairro) que o hedônico <strong>tem</strong> que bater para se justificar.",
     },
     {
         "name": "requests",
@@ -204,6 +214,33 @@ ADRS = [
         "alternative": "Commitar o HTML junto com cada mudança.",
         "tradeoff": "Não commitar gerados mantém o histórico limpo e o repo enxuto; o preço é que um clone novo só tem o HTML após rodar o gerador (o hook resolve no 1º commit).",
     },
+    {
+        "id": "ADR-08",
+        "title": "Re-escopo: de maximizador de RevPAN para <em>advisor de posicionamento</em>",
+        "status": "Aceita (vira a Fase 2)",
+        "context": "O plano original da Fase 2 era um recomendador que escolhe o preço que <strong>maximiza RevPAN</strong>. A EDA da Fase 2 (confirmada por 5 verificadores adversariais e reproduzida de forma determinística) mostrou que esse alvo é <strong>não-identificável</strong> neste snapshot: (1) <code>revenue ≈ price × occupancy</code> em <strong>73%</strong> das linhas → RevPAN é circular; (2) <code>corr(occupancy, reviews_ltm)=0,957</code> → a “ocupação” é uma estimativa de reviews, não reservas observadas, e 26% com zero reviews recebem ocupação 0; (3) controlando reviews, o β de preço→ocupação colapsa <strong>−0,086 → −0,008</strong> (90%) → não há curva de elasticidade para maximizar; (4) o preço é <strong>estático</strong> (o calendar não traz preço) → zero variação intra-anúncio.",
+        "decision": "Abandonar o RevPAN-max e reposicionar a Fase 2 como um <strong>advisor de posicionamento de preço</strong>: dado um anúncio, dizer <em>onde</em> o preço cai em relação aos pares comparáveis e a uma estimativa hedônica, devolvendo uma <strong>faixa</strong> (não um ponto) e o caveat do proxy de ocupação. Honestidade &gt; falsa precisão.",
+        "alternative": "Forçar o RevPAN-max mesmo assim (o ótimo interior cairia no teto de preço — “suba o preço para todo mundo”, um artefato, não um insight) ou buscar outro dataset com preço variável e reservas reais (fora do escopo de portfólio local-first).",
+        "tradeoff": "O advisor entrega valor real e <em>defensável</em> com o dado que existe; abre mão da promessa (seseduzante, porém falsa) de um número “ótimo”. Mudaria se houvesse dados de reservas reais + variação de preço intra-anúncio.",
+    },
+    {
+        "id": "ADR-09",
+        "title": "Bloquear leakage e podar features antes do hedônico",
+        "status": "Aceita",
+        "context": "A matriz de features tem colunas que vazam o alvo ou desestabilizam os coeficientes: <code>estimated_occupancy/revenue_l365d</code> e <code>availability_365</code> são pós-tratamento; <code>beds</code> troca o sinal do coeficiente líquido (colinear com <code>accommodates</code>/<code>bedrooms</code>, e o VIF&lt;3 não pegou); o bairro tem 155 níveis (cauda rala).",
+        "decision": "Alvo = <code>log(price)</code>. <strong>Dropar</strong> as colunas de leakage + 4 all-NULL + <code>beds</code>; colapsar <code>property_type</code> no top-8 e <code>room_type</code> Hotel(n=13)→Entire; <strong>poolar</strong> o efeito fixo de bairro (n&lt;30 → “Other”, 155→59 níveis). Guardrails: o hedônico tem que bater os baselines triviais.",
+        "alternative": "Jogar tudo no modelo e confiar na regularização; ou usar o VIF como único juiz de colinearidade.",
+        "tradeoff": "Podar à mão dá um modelo interpretável e estável (sinais de coeficiente que se sustentam) ao custo de algum trabalho manual e julgamento. O <code>superhost</code> ficou com coeficiente <strong>negativo</strong> — registrado como caveat, não vendido como alavanca de qualidade.",
+    },
+    {
+        "id": "ADR-10",
+        "title": "Comparáveis com <em>partial pooling</em> (shrinkage), sem corte rígido de k mínimo",
+        "status": "Aceita",
+        "context": "Posicionar um anúncio contra “pares” exige uma estatística de preço do grupo (bairro × tipo de quarto × faixa de capacidade). Grupos pequenos dão percentis instáveis; um corte rígido <code>k_min</code> cria um penhasco (abaixo dele, sem recomendação).",
+        "decision": "<strong>Partial pooling</strong>: encolher (shrink) a estatística do grupo em direção ao pai (bairro, depois global) com peso proporcional ao tamanho da amostra — grupos grandes confiam em si, pequenos pegam emprestado força do pai. Sem penhasco de <code>k_min</code>.",
+        "alternative": "Corte rígido <code>k_min</code> (descartar grupos pequenos) ou no-pooling (usar o grupo cru por menor que seja).",
+        "tradeoff": "O shrinkage degrada suave em vez de quebrar, ao custo de um hiperparâmetro de força de pooling. É o padrão bayesiano/hierárquico clássico para “poucos dados por grupo”.",
+    },
 ]
 
 # --------------------------------------------------------------------------- #
@@ -268,7 +305,35 @@ GLOSSARY = [
     ),
     (
         "RevPAN",
-        "Revenue Per Available Night = diária média × ocupação. Métrica-alvo do recomendador (fase 2).",
+        "Revenue Per Available Night = diária × ocupação. Era o alvo planejado da Fase 2, <strong>descartado</strong> por ser não-identificável neste snapshot (circular + ocupação é proxy de reviews). Ver ADR-08.",
+    ),
+    (
+        "modelo hedônico",
+        "Regressão que explica o preço pelos <em>atributos</em> do bem (quartos, capacidade, tipo, bairro). Cada coeficiente é o “preço implícito” de uma característica. Aqui: <code>log(price)</code> ~ features + efeitos fixos de bairro.",
+    ),
+    (
+        "efeito fixo (FE) de bairro",
+        "Um intercepto por bairro: absorve o nível de preço específico do local (Leblon ≠ Bangu) sem precisar de variáveis explícitas de localização. Bairros raros são poolados em “Other”.",
+    ),
+    (
+        "partial pooling / shrinkage",
+        "Estimar a estatística de um grupo pequeno <em>encolhendo-a</em> em direção ao grupo-pai, com peso pelo tamanho da amostra. Evita percentis instáveis sem descartar grupos pequenos. Ver ADR-10.",
+    ),
+    (
+        "data leakage",
+        "Quando uma feature carrega informação do alvo (ou do futuro) que não estaria disponível na hora de prever — infla a métrica e engana. Aqui: <code>estimated_occupancy/revenue_l365d</code>, <code>availability_365</code>.",
+    ),
+    (
+        "identificabilidade",
+        "Se os dados conseguem, em princípio, distinguir o efeito que você quer medir. RevPAN-max não é identificável aqui: sem variação de preço intra-anúncio e com ocupação ≈ reviews, não há curva de elasticidade a otimizar.",
+    ),
+    (
+        "VIF",
+        "Variance Inflation Factor: mede colinearidade de uma feature com as demais. VIF alto = coeficiente instável. Útil, mas não infalível — <code>beds</code> passou no VIF&lt;3 e mesmo assim trocava o sinal.",
+    ),
+    (
+        "R² ajustado",
+        "Fração da variância do (log-)preço explicada pelo modelo, penalizando nº de variáveis. O hedônico atingiu <strong>0,52</strong> e bateu a mediana por bairro (MAE 0,398 &lt; 0,511).",
     ),
     (
         "ADR (duplo sentido)",
@@ -277,67 +342,163 @@ GLOSSARY = [
 ]
 
 # --------------------------------------------------------------------------- #
-# Fase 1 — as 13 tasks. `key_file` (relativo à raiz) detecta conclusão sozinho.
+# Roadmap por fase. Cada task tem `key_file` (relativo à raiz) que o gerador
+# checa para marcar conclusão sozinho; tasks sem artefato de arquivo usam
+# `done: True` explícito. `status` da fase: "done" | "current" | "todo".
 # --------------------------------------------------------------------------- #
-PHASE1_TASKS = [
-    {"n": 1, "title": "Scaffold uv + tooling (ruff, pytest)", "key_file": "pyproject.toml"},
+PHASES = [
     {
-        "n": 2,
-        "title": "CI — Ruff + pytest na matriz 3.11/3.12",
-        "key_file": ".github/workflows/ci.yml",
+        "id": 1,
+        "name": "Fase 1 — Fundação & pipeline de dados",
+        "status": "done",
+        "summary": (
+            "Pipeline reprodutível e testado que transforma o dump cru do Inside "
+            "Airbnb em 3 tabelas <em>curated</em> tipadas e validadas (pandera). "
+            "Mergeada em <code>main</code> (PR #1)."
+        ),
+        "tasks": [
+            {"n": 1, "title": "Scaffold uv + tooling (ruff, pytest)", "key_file": "pyproject.toml"},
+            {
+                "n": 2,
+                "title": "CI — Ruff + pytest na matriz 3.11/3.12",
+                "key_file": ".github/workflows/ci.yml",
+            },
+            {
+                "n": 3,
+                "title": 'Transform clean_price ("$1,200.00" → float)',
+                "key_file": "src/transform/clean_price.py",
+            },
+            {
+                "n": 4,
+                "title": "Transform parse_fields (t/f, %, bathrooms_text)",
+                "key_file": "src/transform/parse_fields.py",
+            },
+            {"n": 5, "title": "Fixtures de schema cru (conftest)", "key_file": "tests/conftest.py"},
+            {
+                "n": 6,
+                "title": "Curated listings (raw → curated + winsorize)",
+                "key_file": "src/transform/listings.py",
+            },
+            {
+                "n": 7,
+                "title": "Calendar seasonality (agregação DuckDB SQL)",
+                "key_file": "src/transform/calendar.py",
+            },
+            {
+                "n": 8,
+                "title": "Occupancy estimation (modelo SF + blend) ⭐",
+                "key_file": "src/transform/occupancy.py",
+            },
+            {"n": 9, "title": "Contratos pandera (3 tabelas)", "key_file": "src/schemas.py"},
+            {
+                "n": 10,
+                "title": "Download (resolve snapshot + anti-403)",
+                "key_file": "src/data/download.py",
+            },
+            {"n": 11, "title": "Ingest (csv.gz → DuckDB raw)", "key_file": "src/data/ingest.py"},
+            {
+                "n": 12,
+                "title": "Pipeline (orquestra raw→curated + manifest)",
+                "key_file": "src/pipeline.py",
+            },
+            {
+                "n": 13,
+                "title": "Smoke run real (download real, checkpoint)",
+                "key_file": None,
+                "done": True,
+            },
+        ],
     },
     {
-        "n": 3,
-        "title": 'Transform clean_price ("$1,200.00" → float)',
-        "key_file": "src/transform/clean_price.py",
+        "id": 2,
+        "name": "Fase 2 — Hedônico & advisor de posicionamento",
+        "status": "done",
+        "summary": (
+            "Re-escopada do RevPAN-max (não-identificável, ADR-08) para um advisor "
+            "de posicionamento. Modelo hedônico interpretável + comparáveis com "
+            "shrinkage + recomendador de faixa. 70 testes, 95% cov, hedônico "
+            "adjR²=0,52. Mergeada em <code>main</code> (PR #2)."
+        ),
+        "tasks": [
+            {
+                "n": 1,
+                "title": "EDA + decisão de re-escopo (RevPAN não-identificável) ⭐",
+                "key_file": None,
+                "done": True,
+            },
+            {
+                "n": 2,
+                "title": "Matriz de features (log-preço, leakage bloqueado)",
+                "key_file": "src/model/features.py",
+            },
+            {
+                "n": 3,
+                "title": "Hedônico OLS + FE de bairro + VIF + baselines",
+                "key_file": "src/model/hedonic.py",
+            },
+            {
+                "n": 4,
+                "title": "Comparáveis (peer-price com partial pooling)",
+                "key_file": "src/model/comparables.py",
+            },
+            {
+                "n": 5,
+                "title": "Contexto de demanda (sazonalidade, lower-bound)",
+                "key_file": "src/model/demand_context.py",
+            },
+            {
+                "n": 6,
+                "title": "Validação honesta de ocupação (não “ground truth”)",
+                "key_file": "src/model/validation.py",
+            },
+            {
+                "n": 7,
+                "title": "Recomendador de posicionamento (faixa + posição)",
+                "key_file": "src/model/recommender.py",
+            },
+            {
+                "n": 8,
+                "title": "Smoke de integração nos 6 módulos (parquet real)",
+                "key_file": None,
+                "done": True,
+            },
+        ],
     },
     {
-        "n": 4,
-        "title": "Transform parse_fields (t/f, %, bathrooms_text)",
-        "key_file": "src/transform/parse_fields.py",
-    },
-    {"n": 5, "title": "Fixtures de schema cru (conftest)", "key_file": "tests/conftest.py"},
-    {
-        "n": 6,
-        "title": "Curated listings (raw → curated + winsorize)",
-        "key_file": "src/transform/listings.py",
-    },
-    {
-        "n": 7,
-        "title": "Calendar seasonality (agregação DuckDB SQL)",
-        "key_file": "src/transform/calendar.py",
-    },
-    {
-        "n": 8,
-        "title": "Occupancy estimation (modelo SF + blend) ⭐",
-        "key_file": "src/transform/occupancy.py",
-    },
-    {"n": 9, "title": "Contratos pandera (3 tabelas)", "key_file": "src/schemas.py"},
-    {
-        "n": 10,
-        "title": "Download (resolve snapshot + anti-403)",
-        "key_file": "src/data/download.py",
-    },
-    {"n": 11, "title": "Ingest (csv.gz → DuckDB raw)", "key_file": "src/data/ingest.py"},
-    {
-        "n": 12,
-        "title": "Pipeline (orquestra raw→curated + manifest)",
-        "key_file": "src/pipeline.py",
-    },
-    {"n": 13, "title": "Smoke run real (download real, checkpoint)", "key_file": None},
-]
-
-# --------------------------------------------------------------------------- #
-# Fases futuras (resumo de roadmap)
-# --------------------------------------------------------------------------- #
-PHASES_FUTURE = [
-    {
-        "phase": "Fase 2 — Modelo & Recomendador",
-        "summary": "Modelo hedônico interpretável (log-preço com efeitos fixos de bairro, statsmodels) + recomendador regras+estatística que devolve faixa de preço, ocupação esperada, RevPAN e top drivers. Inclui comparáveis e a curva preço×ocupação.",
-    },
-    {
-        "phase": "Fase 3 — Entrega",
-        "summary": "Notebook de EDA narrado, app Streamlit (UI fina sobre src/), validação contra ground-truth, README insight-first e relatório de decisão. Deploy no Streamlit Community Cloud.",
+        "id": 3,
+        "name": "Fase 3 — Entrega",
+        "status": "current",
+        "summary": (
+            "Transformar pipeline + modelo nos entregáveis de portfólio: notebook "
+            "EDA narrado, app Streamlit (UI fina sobre <code>src/</code>), validação "
+            "contra ground-truth, README insight-first e relatório de decisão. "
+            "Deploy no Streamlit Community Cloud."
+        ),
+        "tasks": [
+            {"n": 1, "title": "predict() por-listing exposto no hedônico", "key_file": None},
+            {
+                "n": 2,
+                "title": "Notebook EDA narrado (Restart & Run All limpo)",
+                "key_file": "notebooks/eda.ipynb",
+            },
+            {
+                "n": 3,
+                "title": "App Streamlit — input + card de recomendação",
+                "key_file": "app/streamlit_app.py",
+            },
+            {
+                "n": 4,
+                "title": "Validação ground-truth (narrativa do autor) ⭐",
+                "key_file": "docs/ground_truth_validation.md",
+            },
+            {"n": 5, "title": "README insight-first (story + findings no topo)", "key_file": None},
+            {
+                "n": 6,
+                "title": "Relatório de decisão (1–2 págs, por persona)",
+                "key_file": "reports/decision_report.md",
+            },
+            {"n": 7, "title": "Deploy Streamlit Cloud + link no README", "key_file": None},
+        ],
     },
 ]
 
@@ -345,6 +506,55 @@ PHASES_FUTURE = [
 # Diário de bordo — registro incremental (entrada mais recente primeiro)
 # --------------------------------------------------------------------------- #
 DIARY = [
+    {
+        "date": "2026-06-12",
+        "title": "Fase 2 entregue: advisor de posicionamento (PR #2 mergeado)",
+        "body": (
+            "Implementados e mergeados os 6 módulos de <code>src/model/</code>: "
+            "<code>features</code> (curated→X, alvo <code>log(price)</code>, leakage "
+            "bloqueado), <code>hedonic</code> (OLS + efeitos fixos de bairro + VIF + "
+            "baselines triviais), <code>comparables</code> (percentil de preço dos "
+            "pares com <em>partial pooling</em>), <code>demand_context</code> "
+            "(sazonalidade, lower-bound), <code>validation</code> (concordância "
+            "honesta de ocupação) e <code>recommender</code> (faixa + posição). "
+            "<strong>70 testes, 95% cobertura, ruff limpo.</strong> O smoke de "
+            "integração nos 6 módulos sobre o parquet real deu hedônico "
+            "<strong>adjR²=0,52</strong>, batendo a mediana por bairro "
+            "(MAE 0,398 &lt; 0,511) — e pegou dois bugs que os testes unitários "
+            "com dtype numpy não viam: ExtensionType <code>boolean</code> que "
+            "<code>pd.to_numeric</code> não converte, e uma feature de bairro com "
+            "nome hardcoded no OneHotEncoder. Lição: sempre smoke-compor no dado real."
+        ),
+    },
+    {
+        "date": "2026-06-12",
+        "title": "A virada: por que abandonei o maximizador de RevPAN",
+        "body": (
+            "A Fase 2 ia ser um recomendador que escolhe o preço que maximiza "
+            "RevPAN. A EDA matou a ideia — e foi a melhor coisa que aconteceu no "
+            "projeto. Quatro evidências (reproduzidas de forma determinística e "
+            "checadas por 5 verificadores adversariais): receita = preço × ocupação "
+            "em 73% das linhas (circular); ocupação tem <code>corr=0,957</code> com "
+            "reviews (é proxy, não reserva observada); controlando reviews, o efeito "
+            "preço→ocupação some (−0,086 → −0,008); e o preço é estático (sem "
+            "variação intra-anúncio). Sem curva de elasticidade, não há o que "
+            "maximizar. Re-escopei para um <strong>advisor de posicionamento</strong> "
+            "honesto (faixa + caveat), registrado no ADR-08. Honestidade &gt; falsa "
+            "precisão — e é uma história melhor de portfólio."
+        ),
+    },
+    {
+        "date": "2026-06-11",
+        "title": "Fase 1 fechada e mergeada (PR #1)",
+        "body": (
+            "Pipeline raw→curated completo e testado entrou em <code>main</code>: "
+            "download (resolve snapshot + anti-403), ingest para DuckDB, transforms "
+            "puros, contratos pandera nas 3 tabelas e orquestração idempotente com "
+            "<code>manifest.json</code> (snapshot + sha256). Smoke real: "
+            "<strong>39.816 anúncios analisáveis</strong> + tabela de sazonalidade "
+            "anúncio × mês × dia-da-semana, com a tendência de horizonte removida."
+        ),
+    },
     {
         "date": "2026-06-10",
         "title": "Scaffold commitado + caderno de bordo vivo",
