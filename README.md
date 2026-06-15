@@ -2,6 +2,7 @@
 
 **🇺🇸 English** · [🇧🇷 Português](README.pt-BR.md)
 
+[![Live demo](https://img.shields.io/badge/demo-live%20on%20Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://rio-airbnb-pricing-lab-project.streamlit.app/)
 [![CI](https://github.com/Patrickfgf/rio-airbnb-pricing-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Patrickfgf/rio-airbnb-pricing-lab/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
@@ -55,7 +56,7 @@ The point of the project, enforced in tested `src/` code (the UI carries no busi
 
 ## See it
 
-- 🖥️ **Live dashboard:** _deploy pending — paste the Streamlit Cloud URL here after deploy._
+- 🖥️ **Live dashboard:** **[rio-airbnb-pricing-lab-project.streamlit.app](https://rio-airbnb-pricing-lab-project.streamlit.app/)** — filters + the per-listing price recommender, live on Streamlit Community Cloud.
 - 📓 **Narrated EDA notebook:** [`notebooks/eda.ipynb`](notebooks/eda.ipynb) — market shape →
   neighbourhood map → seasonality → hedonic drivers → the re-scope. Outputs stripped for a clean
   diff; run it locally for the figures.
