@@ -36,3 +36,6 @@ htmlcov/
 # Generated living notebook (rebuilt by the post-commit hook / Pages CI — see ADR-07)
 docs/index.html
 _site/
+
+# Personal portfolio/CV export — local working artifact, not versioned
+docs/portfolio-brief.md

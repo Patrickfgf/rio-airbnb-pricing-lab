@@ -6,7 +6,7 @@
 [![CI](https://github.com/Patrickfgf/rio-airbnb-pricing-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Patrickfgf/rio-airbnb-pricing-lab/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-91%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](pyproject.toml)
 
 An **honest price-positioning advisor** for Airbnb hosts in Rio de Janeiro, built end to end on open
@@ -45,7 +45,7 @@ where comparable listings sit and what a hedonic model expects — **never a sin
 | **Data engineering** | Idempotent `raw → curated` pipeline (download → DuckDB → Parquet) with a `sha256` manifest; the 13M-row calendar is aggregated **in DuckDB**, never pulled whole into pandas. |
 | **Statistical modeling** | Hedonic OLS with neighbourhood fixed effects, VIF collinearity checks, **Duan's smearing** log→price back-transform, and empirical-Bayes shrinkage for thin peer sets. |
 | **Scientific honesty** | Diagnosed an *unidentifiable* objective and re-scoped; blocked target leakage; surfaced every caveat (range, proxy, lower bounds) in the UI instead of hiding them. |
-| **Software engineering** | 91 tests at ~96% coverage, CI on Python 3.11/3.12, `pandera` schema contracts, typed and modular `src/`, a thin UI with **zero business logic**. |
+| **Software engineering** | 104 tests at ~96% coverage, CI on Python 3.11/3.12, `pandera` schema contracts, typed and modular `src/`, a thin UI with **zero business logic**. |
 | **Delivery** | A live Streamlit dashboard, a narrated EDA notebook, a per-persona decision report, and a one-click deploy path. |
 
 ## Honest by design
@@ -73,7 +73,7 @@ The point of the project, enforced in tested `src/` code (the UI carries no busi
 
 ```bash
 uv sync                                              # core pipeline + model deps
-uv run pytest                                        # 91 tests, ~96% coverage on src/
+uv run pytest                                        # 104 tests, ~96% coverage on src/
 
 # The small curated snapshot (2026-03-30) is committed, so the app/notebook run immediately:
 uv run streamlit run app/streamlit_app.py                    # the dashboard
@@ -109,7 +109,7 @@ app/           Streamlit dashboard (thin UI over src/model/service)
 notebooks/     narrated EDA (eda.ipynb), built by scripts/build_eda_notebook.py
 reports/       decision report (PT-BR)
 docs/          ground-truth validation, design spec & plans, living notebook (GitHub Pages)
-tests/         91 tests (pytest), gated in CI on Python 3.11/3.12
+tests/         104 tests (pytest), gated in CI on Python 3.11/3.12
 ```
 
 ## Data & provenance

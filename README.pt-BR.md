@@ -6,7 +6,7 @@
 [![CI](https://github.com/Patrickfgf/rio-airbnb-pricing-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Patrickfgf/rio-airbnb-pricing-lab/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-91%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-104%20passing-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-96%25-brightgreen.svg)](pyproject.toml)
 
 Um **advisor honesto de posicionamento de preço** para anfitriões de Airbnb no Rio de Janeiro,
@@ -47,7 +47,7 @@ que o modelo hedônico espera — **nunca um número único garantido**.
 | **Engenharia de dados** | Pipeline idempotente `raw → curated` (download → DuckDB → Parquet) com manifesto `sha256`; o calendário de 13M linhas é agregado **no DuckDB**, nunca carregado inteiro no pandas. |
 | **Modelagem estatística** | OLS hedônico com efeitos fixos de bairro, checagem de colinearidade (VIF), back-transform log→preço com **smearing de Duan**, e shrinkage empírico-Bayes para conjuntos pequenos de comparáveis. |
 | **Honestidade científica** | Diagnostiquei um objetivo *não-identificável* e fiz re-scope; bloqueei vazamento de target; trouxe todo caveat (faixa, proxy, limite inferior) para a interface em vez de escondê-los. |
-| **Engenharia de software** | 91 testes a ~96% de cobertura, CI em Python 3.11/3.12, contratos de schema com `pandera`, `src/` tipado e modular, UI fina com **zero lógica de negócio**. |
+| **Engenharia de software** | 104 testes a ~96% de cobertura, CI em Python 3.11/3.12, contratos de schema com `pandera`, `src/` tipado e modular, UI fina com **zero lógica de negócio**. |
 | **Entrega** | Dashboard Streamlit ao vivo, notebook de EDA narrado, relatório de decisão por persona, e deploy em um clique. |
 
 ## Honesto por construção
@@ -76,7 +76,7 @@ O ponto do projeto, garantido em código testado em `src/` (a UI não carrega l�
 
 ```bash
 uv sync                                              # deps do pipeline + modelo
-uv run pytest                                        # 91 testes, ~96% de cobertura em src/
+uv run pytest                                        # 104 testes, ~96% de cobertura em src/
 
 # O snapshot curado pequeno (2026-03-30) está commitado, então app/notebook rodam de imediato:
 uv run streamlit run app/streamlit_app.py                    # o dashboard
@@ -112,7 +112,7 @@ app/           dashboard Streamlit (UI fina sobre src/model/service)
 notebooks/     EDA narrado (eda.ipynb), gerado por scripts/build_eda_notebook.py
 reports/       relatório de decisão (PT-BR)
 docs/          validação ground-truth, spec de design & planos, caderno de bordo (GitHub Pages)
-tests/         91 testes (pytest), gated no CI em Python 3.11/3.12
+tests/         104 testes (pytest), gated no CI em Python 3.11/3.12
 ```
 
 ## Dados & proveniência
