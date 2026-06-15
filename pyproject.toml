@@ -14,16 +14,16 @@ dependencies = [
     "pyarrow>=17",
     "statsmodels>=0.14.6",
     "scikit-learn>=1.9.0",
-]
-
-[project.optional-dependencies]
-# Phase-3 delivery deps, kept out of the core pipeline/model install.
-# The Streamlit Cloud deploy installs `app` (see requirements.txt); the notebook
-# render uses `notebook`. CI does not install either, so the test suite stays lean.
-app = [
+    # Dashboard is a first-class deliverable. These are CORE (not an optional extra) so Streamlit
+    # Cloud installs them whichever dependency file it picks (it prefers pyproject/uv.lock over
+    # requirements.txt and does NOT install optional extras).
     "streamlit>=1.40",
     "plotly>=5.24",
 ]
+
+[project.optional-dependencies]
+# Only the notebook-render toolchain stays optional (CI doesn't install it, so the suite stays lean).
+# streamlit + plotly are CORE deps now — see the note in [project.dependencies].
 notebook = [
     "matplotlib>=3.9",
     "jupyter>=1.1",
