@@ -33,6 +33,10 @@ que o modelo hedônico espera — **nunca um número único garantido**.
   veja a [validação ground-truth](docs/ground_truth_validation.md).)
 - **A demanda tem data.** **Réveillon** e **Carnaval** são os picos datados; as magnitudes do
   calendário detrended são **limite inferior** (picos de horizonte longo saturam num teto).
+- **A distância da praia é um gradiente de preço *dentro do bairro*.** Cada km a mais da praia mais
+  próxima vale **≈ −2,9%** (altamente significativo, p≈2e-23) **depois** dos efeitos fixos de bairro
+  — o próprio bairro já captura a maior parte do prêmio de localização, então este é o gradiente
+  residual *dentro* dele, sem dupla contagem (VIF 1,15; ganho de R² ajustado de +0,001, por design).
 - **O modelo é honesto sobre os limites.** **R² ajustado ≈ 0,52**, então cada recomendação faz um
   **blend 50/50 entre modelo e preços de comparáveis** — nenhum dos dois sozinho decide.
 
