@@ -74,7 +74,7 @@ uv sync                                              # deps do pipeline + modelo
 uv run pytest                                        # 91 testes, ~96% de cobertura em src/
 
 # O snapshot curado pequeno (2026-03-30) está commitado, então app/notebook rodam de imediato:
-uv run --extra app streamlit run app/streamlit_app.py        # o dashboard
+uv run streamlit run app/streamlit_app.py                    # o dashboard
 uv run --extra notebook jupyter lab notebooks/eda.ipynb      # o notebook
 ```
 

@@ -2536,17 +2536,15 @@ dependencies = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "pandera" },
+    { name = "plotly" },
     { name = "pyarrow" },
     { name = "requests" },
     { name = "scikit-learn" },
     { name = "statsmodels" },
+    { name = "streamlit" },
 ]
 
 [package.optional-dependencies]
-app = [
-    { name = "plotly" },
-    { name = "streamlit" },
-]
 notebook = [
     { name = "ipykernel" },
     { name = "jupyter" },
@@ -2573,14 +2571,14 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pandera", specifier = ">=0.22" },
-    { name = "plotly", marker = "extra == 'app'", specifier = ">=5.24" },
+    { name = "plotly", specifier = ">=5.24" },
     { name = "pyarrow", specifier = ">=17" },
     { name = "requests", specifier = ">=2.32" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
     { name = "statsmodels", specifier = ">=0.14.6" },
-    { name = "streamlit", marker = "extra == 'app'", specifier = ">=1.40" },
+    { name = "streamlit", specifier = ">=1.40" },
 ]
-provides-extras = ["app", "notebook"]
+provides-extras = ["notebook"]
 
 [package.metadata.requires-dev]
 dev = [
