@@ -34,6 +34,7 @@ CURATED_LISTINGS_SCHEMA = DataFrameSchema(
         "host_response_rate": Column("float64", Check.in_range(0, 1), nullable=True),
         "host_acceptance_rate": Column("float64", Check.in_range(0, 1), nullable=True),
         "review_scores_rating": Column("float64", Check.in_range(0, 5), nullable=True),
+        "distance_to_beach_km": Column("float64", Check.ge(0), nullable=True, required=False),
     },
     strict=False,  # allow extra columns (optional passthrough, derived features)
     coerce=True,

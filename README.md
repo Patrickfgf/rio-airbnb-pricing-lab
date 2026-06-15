@@ -31,6 +31,10 @@ where comparable listings sit and what a hedonic model expects — **never a sin
   [ground-truth validation](docs/ground_truth_validation.md).)
 - **Demand is datable.** **Réveillon** and **Carnaval** are the dated peaks; the detrended-calendar
   magnitudes are **lower bounds** (far-horizon peaks hit a measurement ceiling).
+- **Distance to the beach is a *within-neighbourhood* price gradient.** Each km farther from the
+  nearest beach is worth **≈ −2.9%** (highly significant, p≈2e-23) **after** neighbourhood fixed
+  effects — the bairro itself already captures most of the location premium, so this is the residual
+  gradient *inside* it, not double-counting (VIF 1.15; small adj-R² lift of +0.001 by design).
 - **The model is honest about its limits.** Adjusted **R² ≈ 0.52**, so each recommendation **blends
   the model 50/50 with live peer prices** — neither alone is decisive.
 

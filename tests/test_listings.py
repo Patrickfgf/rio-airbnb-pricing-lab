@@ -1,3 +1,5 @@
+import pandas as pd
+
 from src.transform.listings import build_curated_listings
 
 
@@ -56,3 +58,53 @@ def test_estimated_columns_passthrough_when_present(raw_listings):
 def test_no_estimated_columns_when_absent(raw_listings):
     out = build_curated_listings(raw_listings)
     assert "estimated_occupancy_l365d" not in out.columns
+
+
+def _raw_row(**overrides):
+    base = {
+        "id": "1",
+        "neighbourhood_cleansed": "Copacabana",
+        "room_type": "Entire home/apt",
+        "property_type": "Entire rental unit",
+        "accommodates": "2",
+        "bedrooms": "1",
+        "beds": "1",
+        "bathrooms_text": "1 bath",
+        "price": "$500.00",
+        "minimum_nights": "2",
+        "host_is_superhost": "t",
+        "instant_bookable": "f",
+        "host_response_time": "within an hour",
+        "host_response_rate": "100%",
+        "host_acceptance_rate": "90%",
+        "number_of_reviews": "10",
+        "number_of_reviews_ltm": "5",
+        "reviews_per_month": "1.0",
+        "review_scores_rating": "4.8",
+        "availability_365": "100",
+        "last_review": "2026-01-01",
+        "first_review": "2024-01-01",
+        "latitude": "-22.9711",
+        "longitude": "-43.1822",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_curated_listings_has_distance_to_beach():
+    raw = pd.DataFrame([_raw_row()])
+    curated = build_curated_listings(raw)
+    assert "distance_to_beach_km" in curated.columns
+    # Copacabana centroid -> ~0 km from nearest beach.
+    assert curated["distance_to_beach_km"].iloc[0] < 0.5
+
+
+def test_curated_distance_larger_for_inland_listing():
+    raw = pd.DataFrame(
+        [
+            _raw_row(id="1", latitude="-22.9711", longitude="-43.1822"),  # on the beach
+            _raw_row(id="2", latitude="-22.9500", longitude="-43.2800"),  # inland
+        ]
+    )
+    curated = build_curated_listings(raw).set_index("listing_id")
+    assert curated.loc[2, "distance_to_beach_km"] > curated.loc[1, "distance_to_beach_km"]

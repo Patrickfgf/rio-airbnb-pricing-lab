@@ -111,3 +111,18 @@ def test_seasonality_detrended_event_uplift_out_of_range_fails():
     df.loc[0, "event_uplift"] = 1.5  # outside [-1, 1]
     with pytest.raises(SchemaError):
         validate_curated_seasonality_detrended(df)
+
+
+def test_schema_accepts_distance_to_beach_column(raw_listings):
+    # build_curated_listings already emits distance_to_beach_km (>= 0) after Task 2;
+    # the full curated frame satisfies every required column, so this isolates the new rule.
+    out = build_curated_listings(raw_listings)
+    validated = validate_curated_listings(out)  # must not raise
+    assert "distance_to_beach_km" in validated.columns
+
+
+def test_schema_rejects_negative_distance(raw_listings):
+    out = build_curated_listings(raw_listings).copy()
+    out.loc[0, "distance_to_beach_km"] = -1.0  # a beach distance can never be negative
+    with pytest.raises(SchemaError):
+        validate_curated_listings(out)

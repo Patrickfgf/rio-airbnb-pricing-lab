@@ -85,3 +85,22 @@ BAND_IQR_FRACTION = 0.5  # half-band width as a fraction of the peer IQR
 ANCHOR_FLOOR_FRACTION = 0.5  # never let `low` fall below this fraction of the anchor
 POSITION_BELOW_PCTL = 0.33  # price_percentile < this -> "below market"
 POSITION_ABOVE_PCTL = 0.66  # price_percentile > this -> "above market"
+
+# --- Beach-proximity feature (see docs/.../2026-06-15-beach-proximity-feature.md) ---
+# Approximate centroids of Rio's main beaches (decimal degrees; lat, lon are negative).
+# Precision is not critical: the feature is the haversine distance to the NEAREST of these,
+# which is robust to small centroid errors. Refine/add points if a beach is under-covered.
+RIO_BEACHES: tuple[tuple[str, float, float], ...] = (
+    ("Flamengo", -22.9329, -43.1738),
+    ("Botafogo", -22.9530, -43.1810),
+    ("Praia Vermelha (Urca)", -22.9555, -43.1650),
+    ("Leme", -22.9630, -43.1670),
+    ("Copacabana", -22.9711, -43.1822),
+    ("Arpoador", -22.9886, -43.1936),
+    ("Ipanema", -22.9869, -43.2045),
+    ("Leblon", -22.9874, -43.2230),
+    ("São Conrado", -23.0106, -43.2680),
+    ("Barra da Tijuca", -23.0100, -43.3650),
+    ("Recreio dos Bandeirantes", -23.0250, -43.4650),
+    ("Grumari", -23.0480, -43.5170),
+)
