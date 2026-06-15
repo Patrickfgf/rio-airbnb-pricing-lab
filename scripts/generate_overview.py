@@ -28,8 +28,18 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "index.html"
 
 IGNORE_DIRS = {
-    ".git", ".venv", "__pycache__", ".pytest_cache", ".ruff_cache", ".mypy_cache",
-    ".idea", ".vscode", "data", ".claude", "node_modules", "_site",
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
+    "data",
+    ".claude",
+    "node_modules",
+    "_site",
     ".ipynb_checkpoints",
 }
 
@@ -39,9 +49,7 @@ IGNORE_DIRS = {
 # --------------------------------------------------------------------------- #
 def git(*args: str) -> str:
     try:
-        r = subprocess.run(
-            ["git", *args], cwd=ROOT, capture_output=True, text=True, check=True
-        )
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True)
         return r.stdout.strip()
     except Exception:
         return ""
@@ -72,11 +80,7 @@ def count_source_modules() -> int:
     src = ROOT / "src"
     if not src.exists():
         return 0
-    return sum(
-        1
-        for p in src.rglob("*.py")
-        if p.name != "__init__.py" and p.stat().st_size > 0
-    )
+    return sum(1 for p in src.rglob("*.py") if p.name != "__init__.py" and p.stat().st_size > 0)
 
 
 def count_tests() -> int:
@@ -113,15 +117,48 @@ def read_stack_versions() -> dict:
     return info
 
 
-def phase1_progress() -> tuple[int, int, list[dict]]:
-    rows: list[dict] = []
-    done = 0
-    for t in C.PHASE1_TASKS:
-        kf = t["key_file"]
-        is_done = bool(kf) and (ROOT / kf).exists()
-        done += int(is_done)
-        rows.append({**t, "done": is_done, "manual": kf is None})
-    return done, len(C.PHASE1_TASKS), rows
+def _task_done(t: dict) -> bool:
+    """A task is done if it declares done=True or its key_file exists on disk."""
+    if t.get("done"):
+        return True
+    kf = t.get("key_file")
+    return bool(kf) and (ROOT / kf).exists()
+
+
+def phases_progress() -> list[dict]:
+    """Per-phase progress with auto-detected task completion."""
+    phases: list[dict] = []
+    for ph in C.PHASES:
+        rows: list[dict] = []
+        done = 0
+        for t in ph["tasks"]:
+            is_done = _task_done(t)
+            done += int(is_done)
+            rows.append({**t, "done": is_done, "manual": t.get("key_file") is None})
+        phases.append(
+            {
+                "id": ph["id"],
+                "name": ph["name"],
+                "status": ph.get("status", "todo"),
+                "summary": ph["summary"],
+                "done": done,
+                "total": len(ph["tasks"]),
+                "rows": rows,
+            }
+        )
+    return phases
+
+
+def current_phase(phases: list[dict]) -> dict:
+    """Phase to surface in the status bar: explicit 'current', else the first
+    not-yet-complete one, else the last."""
+    for ph in phases:
+        if ph["status"] == "current":
+            return ph
+    for ph in phases:
+        if ph["done"] < ph["total"]:
+            return ph
+    return phases[-1]
 
 
 def build_tree() -> str:
@@ -159,7 +196,8 @@ def section(id_: str, title: str, inner: str) -> str:
 
 
 def render_status(facts: dict) -> str:
-    done, total, _ = facts["progress"]
+    cur = current_phase(facts["phases"])
+    done, total = cur["done"], cur["total"]
     pct = round(done / total * 100) if total else 0
     chips = [
         ("commit", facts["head"]),
@@ -177,12 +215,12 @@ def render_status(facts: dict) -> str:
     return f"""
 <header class="status">
   <div class="status-row">
-    <div class="brand"><span class="dot"></span><strong>{esc(C.PROJECT['name'])}</strong>
+    <div class="brand"><span class="dot"></span><strong>{esc(C.PROJECT["name"])}</strong>
       <span class="sub">caderno de bordo</span></div>
     <div class="chips">{chip_html}</div>
   </div>
   <div class="progress">
-    <div class="progress-label">Fase 1 · {done}/{total} tasks</div>
+    <div class="progress-label">Fase {cur["id"]} · {done}/{total} tasks</div>
     <div class="bar"><div class="bar-fill" style="width:{pct}%"></div></div>
   </div>
 </header>"""
@@ -220,11 +258,14 @@ def render_pipeline() -> str:
     flow = f'<div class="pipeline">{"".join(boxes)}</div>'
     detail = "".join(
         f'<div class="pstep"><code>{esc(s["stage"])}</code> · <strong>{esc(s["label"])}</strong>'
-        f'<p>{s["desc"]}</p></div>'
+        f"<p>{s['desc']}</p></div>"
         for s in C.PIPELINE
     )
-    return section("arquitetura", "Arquitetura — o pipeline de dados",
-                   flow + f'<div class="psteps">{detail}</div>')
+    return section(
+        "arquitetura",
+        "Arquitetura — o pipeline de dados",
+        flow + f'<div class="psteps">{detail}</div>',
+    )
 
 
 def render_stack(versions: dict) -> str:
@@ -241,7 +282,7 @@ def render_stack(versions: dict) -> str:
     live = (
         f'<p class="muted small">Do <code>pyproject.toml</code> (vivo) — runtime: '
         f"<code>{deps}</code> · dev: <code>{dev}</code> · "
-        f'python <code>{esc(versions["python"])}</code></p>'
+        f"python <code>{esc(versions['python'])}</code></p>"
     )
     return section("stack", "Stack & ferramentas", table + live)
 
@@ -251,7 +292,7 @@ def render_adrs() -> str:
         f'<article class="adr"><div class="adr-head">'
         f'<span class="adr-id">{esc(a["id"])}</span>'
         f'<span class="adr-status">{a["status"]}</span></div>'
-        f'<h3>{a["title"]}</h3><dl>'
+        f"<h3>{a['title']}</h3><dl>"
         f"<dt>Contexto</dt><dd>{a['context']}</dd>"
         f"<dt>Decisão</dt><dd>{a['decision']}</dd>"
         f"<dt>Alternativa descartada</dt><dd>{a['alternative']}</dd>"
@@ -270,23 +311,29 @@ def render_tree(tree: str) -> str:
     return section("estrutura", "Estrutura de arquivos", f'<pre class="tree">{esc(tree)}</pre>')
 
 
-def render_roadmap(progress: tuple[int, int, list[dict]]) -> str:
-    done, total, rows = progress
-    items = []
-    for r in rows:
-        cls = "manual" if r["manual"] else ("done" if r["done"] else "todo")
-        mark = "✓" if r["done"] else "○"
-        items.append(
-            f'<li class="{cls}"><span class="mark">{mark}</span>'
-            f'<span class="tnum">{r["n"]:02d}</span> {esc(r["title"])}</li>'
+_PHASE_BADGE = {"done": "concluída", "current": "em andamento", "todo": "planejada"}
+
+
+def render_roadmap(phases: list[dict]) -> str:
+    blocks = []
+    for ph in phases:
+        items = []
+        for r in ph["rows"]:
+            cls = "done" if r["done"] else "todo"
+            mark = "✓" if r["done"] else "○"
+            items.append(
+                f'<li class="{cls}"><span class="mark">{mark}</span>'
+                f'<span class="tnum">{r["n"]:02d}</span> {esc(r["title"])}</li>'
+            )
+        checklist = f'<ol class="tasks">{"".join(items)}</ol>'
+        badge = _PHASE_BADGE.get(ph["status"], "")
+        blocks.append(
+            f'<div class="phase phase-{esc(ph["status"])}">'
+            f'<div class="phase-head"><h3>{esc(ph["name"])}</h3>'
+            f'<span class="phase-badge">{ph["done"]}/{ph["total"]} · {esc(badge)}</span></div>'
+            f'<p class="phase-sum">{ph["summary"]}</p>{checklist}</div>'
         )
-    checklist = f'<ol class="tasks">{"".join(items)}</ol>'
-    future = "".join(
-        f'<div class="future"><h3>{esc(f["phase"])}</h3><p>{f["summary"]}</p></div>'
-        for f in C.PHASES_FUTURE
-    )
-    return section("roadmap", "Roadmap",
-                   f"<h3>Fase 1 — {done}/{total} concluídas</h3>{checklist}{future}")
+    return section("roadmap", "Roadmap", "".join(blocks))
 
 
 def render_timeline(commits: list[dict]) -> str:
@@ -306,7 +353,7 @@ def render_timeline(commits: list[dict]) -> str:
 def render_diary() -> str:
     items = "".join(
         f'<article class="entry"><div class="entry-date">{esc(e["date"])}</div>'
-        f'<h3>{esc(e["title"])}</h3><p>{e["body"]}</p></article>'
+        f"<h3>{esc(e['title'])}</h3><p>{e['body']}</p></article>"
         for e in C.DIARY
     )
     return section("diario", "Diário de bordo", f'<div class="diary">{items}</div>')
@@ -334,7 +381,7 @@ def render_howto() -> str:
 def render_footer(facts: dict) -> str:
     return (
         f'<footer class="foot">Gerado em {esc(facts["generated_at"])} · '
-        f'commit {esc(facts["head"])} · branch {esc(facts["branch"])} · '
+        f"commit {esc(facts['head'])} · branch {esc(facts['branch'])} · "
         f"fonte: <code>scripts/generate_overview.py</code></footer>"
     )
 
@@ -357,7 +404,7 @@ def main() -> int:
         "modules": count_source_modules(),
         "tests": count_tests(),
         "versions": versions,
-        "progress": phase1_progress(),
+        "phases": phases_progress(),
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
     body = "\n".join(
@@ -371,7 +418,7 @@ def main() -> int:
             render_adrs(),
             render_glossary(),
             render_tree(build_tree()),
-            render_roadmap(facts["progress"]),
+            render_roadmap(facts["phases"]),
             render_timeline(get_commits()),
             render_diary(),
             render_howto(),
@@ -381,9 +428,11 @@ def main() -> int:
     )
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(page(body), encoding="utf-8")
-    done, total, _ = facts["progress"]
-    print(f"Wrote {OUTPUT.relative_to(ROOT)} — {done}/{total} tasks, "
-          f"{facts['total_commits']} commits, {facts['tests']} tests")
+    cur = current_phase(facts["phases"])
+    print(
+        f"Wrote {OUTPUT.relative_to(ROOT)} — fase {cur['id']} {cur['done']}/{cur['total']}, "
+        f"{facts['total_commits']} commits, {facts['tests']} tests"
+    )
     return 0
 
 
@@ -455,6 +504,14 @@ overflow-x:auto;font-size:.82rem;line-height:1.5}
 .tasks .tnum{font-family:monospace;color:var(--muted);font-size:.8rem}.tasks li.done .tnum{color:var(--accent)}
 .future{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.7rem 1rem;margin-top:.6rem}
 .future h3{margin:0 0 .2rem;font-size:1rem}.future p{margin:0;font-size:.9rem;color:#403930}
+.phase{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border);
+border-radius:10px;padding:.8rem 1.1rem;margin-top:.9rem;box-shadow:var(--shadow)}
+.phase-done{border-left-color:var(--done)}.phase-current{border-left-color:var(--accent-2)}
+.phase-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.phase-head h3{margin:0;font-size:1.08rem}
+.phase-badge{font-family:monospace;font-size:.72rem;color:var(--muted);white-space:nowrap}
+.phase-current .phase-badge{color:var(--accent-2);font-weight:700}
+.phase-sum{margin:.3rem 0 .5rem;font-size:.9rem;color:#403930}
 .timeline{list-style:none;padding:0;margin:.4rem 0;border-left:2px solid var(--border)}
 .timeline li{position:relative;padding:.35rem 0 .35rem 1.2rem;font-size:.9rem}
 .timeline li::before{content:"";position:absolute;left:-5px;top:.7rem;width:8px;height:8px;border-radius:50%;background:var(--accent)}

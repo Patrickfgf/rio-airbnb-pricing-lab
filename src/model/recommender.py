@@ -6,7 +6,10 @@ suggested price RANGE with the top drivers. The price-selection policy is the au
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+
+from src import config
 
 
 @dataclass(frozen=True)
@@ -35,23 +38,29 @@ def recommend_price(
     top_drivers: list[tuple[str, float]],
     demand_note: str,
 ) -> PriceRecommendation:
-    # ---- AUTHOR CONTRIBUTION (spec §11): the positioning policy (~5-10 lines) ----
-    # Decide `anchor`, `low`, `high`, and `position_label` from hedonic_point, peer_median,
-    # peer_iqr, and price_percentile. Questions to answer in code:
-    #   - How do you weight the model's hedonic_point vs the peer_median for the anchor?
-    #   - How wide is the band (use peer_iqr)? Symmetric, or skewed by percentile?
-    #   - What percentile thresholds map to "below"/"in line"/"above market"?
-    # DEFAULT POLICY (author: tune these). Blend model & market 50/50; the hedonic adjR2 ~0.52
-    # means neither the model nor the peers alone is decisive, so weight them equally.
-    anchor = 0.5 * hedonic_point + 0.5 * peer_median
-    half_band = 0.5 * peer_iqr
-    low = max(
-        anchor - half_band, 0.5 * anchor
-    )  # floor at 50% of anchor: never suggest <=0 or absurd
+    # Boundary validation: this is a system boundary (consumes hedonic + comparables + demand).
+    # `hedonic_point` is expected in PRICE space (BRL), not log space — the caller exponentiates.
+    if not (math.isfinite(hedonic_point) and math.isfinite(peer_median)):
+        raise ValueError("hedonic_point and peer_median must be finite")
+    if peer_median <= 0:
+        raise ValueError(f"peer_median must be > 0, got {peer_median}")
+    if peer_iqr < 0:
+        raise ValueError(f"peer_iqr must be >= 0, got {peer_iqr}")
+    if not 0.0 <= price_percentile <= 1.0:
+        raise ValueError(f"price_percentile must be in [0, 1], got {price_percentile}")
+
+    # ---- AUTHOR CONTRIBUTION (spec §11): the positioning policy (tunable via config) ----
+    # Blend model & market by HEDONIC_MARKET_BLEND_WEIGHT; the hedonic adjR2 ~0.52 means neither
+    # the model nor the peers alone is decisive, so the default weights them equally.
+    w = config.HEDONIC_MARKET_BLEND_WEIGHT
+    anchor = w * hedonic_point + (1 - w) * peer_median
+    half_band = config.BAND_IQR_FRACTION * peer_iqr
+    # floor `low` at a fraction of the anchor: never suggest <=0 or an absurd lowball
+    low = max(anchor - half_band, config.ANCHOR_FLOOR_FRACTION * anchor)
     high = anchor + half_band
-    if price_percentile < 0.33:
+    if price_percentile < config.POSITION_BELOW_PCTL:
         position_label = "below market"
-    elif price_percentile > 0.66:
+    elif price_percentile > config.POSITION_ABOVE_PCTL:
         position_label = "above market"
     else:
         position_label = "in line"

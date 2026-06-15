@@ -1,0 +1,19 @@
+{
+  "snapshot_date": "2026-03-30",
+  "generated_at": "2026-06-12T18:01:17.003965+00:00",
+  "source": "https://data.insideairbnb.com/brazil/rj/rio-de-janeiro/2026-03-30/data/listings.csv.gz",
+  "n_listings": 39816,
+  "n_seasonality_rows": 3424596,
+  "n_seasonality_detrended_rows": 368,
+  "has_estimated_occupancy": true,
+  "raw_files": {
+    "listings.csv.gz": {
+      "sha256": "e51d3af3d65fb3a7faae58c300d21b326c346d36aee1ca256dd04228bf6424b2",
+      "bytes": 23370365
+    },
+    "calendar.csv.gz": {
+      "sha256": "a67b01c3ff2ccce1e10aaacd6b802101beef9fecf786fa962bd820b40b9728e8",
+      "bytes": 36377379
+    }
+  }
+}

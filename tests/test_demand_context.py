@@ -32,6 +32,37 @@ def test_known_events_surface_with_lower_bound_flag():
 
 
 def test_reveillon_spans_year_boundary():
-    # Jan 1 (2027-01-01) must count toward Réveillon even though it is a different year/month
-    ctx = seasonal_context(_detrended())
-    assert ctx.events["Réveillon"] >= 0.083  # picks up Dec 31 (0.093) and Jan 1 (0.083)
+    # Only Jan 1 falls in the Réveillon window here (Dec 15 is deliberately outside it). If the
+    # year-wrap branch were broken, Jan 1 would be missed and Réveillon would be absent — so the
+    # assertion can only pass via the wrap logic (not tautological).
+    df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2027-01-01", "2026-12-15", "2026-07-15"]),
+            "dow": [5, 1, 2],
+            "horizon_days": [277, 260, 107],
+            "unavail_rate": [0.66, 0.50, 0.30],
+            "baseline": [0.58, 0.50, 0.30],
+            "event_uplift": [0.083, 0.040, 0.0],
+            "is_edge": [False, False, False],
+        }
+    )
+    ctx = seasonal_context(df)
+    assert ctx.events["Réveillon"] == 0.083
+
+
+def test_is_edge_nullable_boolean_does_not_break():
+    # curated parquet may carry is_edge as a pandas nullable `boolean` with <NA>; ~NA would break
+    # the .loc mask. NA must be coerced to "not an edge" deterministically.
+    df = _detrended()
+    df["is_edge"] = pd.array([True, False, False, False, None], dtype="boolean")
+    ctx = seasonal_context(df)  # must not raise
+    assert ctx.dropped_edge == 1  # only the first row is a true edge; NA treated as not-edge
+
+
+def test_all_edge_rows_yield_empty_context():
+    df = _detrended()
+    df["is_edge"] = True
+    ctx = seasonal_context(df)
+    assert ctx.top_dates.empty
+    assert ctx.events == {}
+    assert ctx.dropped_edge == len(df)

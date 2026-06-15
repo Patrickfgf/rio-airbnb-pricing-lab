@@ -1,6 +1,14 @@
-# Data (reconstructible from the dump; never commit)
-# Anchored to repo root so it does NOT match the src/data/ package.
-/data/
+# Data (reconstructible from the dump). Anchored to repo root so it does NOT match the
+# src/data/ package. EXCEPTION (Phase-3 deploy, decision A): the SMALL curated tables the
+# Streamlit app needs are committed so it can boot on Streamlit Cloud (no persistent disk).
+# The raw layer, the 181MB duckdb, and the 3.4M-row calendar_seasonality stay ignored.
+/data/*
+!/data/curated/
+/data/curated/*
+!/data/curated/listings.parquet
+!/data/curated/calendar_seasonality_detrended.parquet
+!/data/curated/occupancy.parquet
+!/data/curated/manifest.json
 *.duckdb
 *.duckdb.wal
 *.csv.gz

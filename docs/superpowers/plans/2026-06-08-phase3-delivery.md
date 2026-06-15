@@ -1,5 +1,9 @@
 # Phase 3 — Delivery (EDA · Dashboard · Validation · README) — Plan Outline
 
+> ⚠️ **SUPERSEDED (2026-06-14)** by `2026-06-14-phase3-delivery.md`. This outline predates the
+> Phase-2 re-scope and still assumes a RevPAN-maximizer ("RevPAN frontier", "expected RevPAN"),
+> which Phase 2 dropped as unidentifiable. Kept for history only — follow the new plan.
+
 > **STATUS: OUTLINE.** Expanded into a full step-by-step plan **at the Phase-3 checkpoint**, once
 > the model + recommender (Phase 2) exist and the real findings are known. The narrative
 > deliverables (insight-first README, decision report, ground-truth validation) are written

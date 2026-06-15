@@ -79,3 +79,12 @@ def test_nullable_extension_dtypes(toy_listings):
     assert str(X["accommodates"].dtype) == "float64"
     assert X["host_is_superhost"].notna().all()  # NA filled to 0.0
     assert X["superhost_missing"].sum() == 20  # 20 None in the fixture
+
+
+def test_all_null_numeric_column_raises(toy_listings):
+    # an entirely-NULL numeric column has a NaN median, so fillna is a no-op and NaN would leak into
+    # the OLS design. The feature boundary must fail loudly instead.
+    bad = toy_listings.copy()
+    bad["bathrooms_num"] = np.nan
+    with pytest.raises(ValueError, match="entirely NULL"):
+        build_model_matrix(bad)
