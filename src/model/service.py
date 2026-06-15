@@ -156,9 +156,14 @@ def _predict_price(
         "host_is_superhost": float(inp.host_is_superhost),
         "number_of_reviews": float(inp.number_of_reviews),
     }
-    augmented = pd.concat(
-        [listings[list(_INPUT_LISTING_COLS)], pd.DataFrame([row])], ignore_index=True
-    )
+    # Carry distance_to_beach_km from the market (when present) so the coordinate-less input row
+    # gets it median-imputed by build_model_matrix instead of defaulting to 0 ("on the beach"),
+    # which would bias every recommendation upward. The input row supplies no distance -> NaN ->
+    # median-imputed to the market median inside build_model_matrix.
+    input_cols = list(_INPUT_LISTING_COLS)
+    if "distance_to_beach_km" in listings.columns:
+        input_cols.append("distance_to_beach_km")
+    augmented = pd.concat([listings[input_cols], pd.DataFrame([row])], ignore_index=True)
     x_all, _, meta = build_model_matrix(augmented)
     # Re-index onto the fitted columns: unseen dummies (e.g. an unknown room_type) drop out, and
     # columns the input didn't trigger fill with 0 — exactly the one-hot "absent level" encoding.

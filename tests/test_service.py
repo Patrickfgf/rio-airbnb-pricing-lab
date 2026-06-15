@@ -133,3 +133,79 @@ def test_demand_note_surfaces_reveillon_lower_bound(market, detrended):
     advice = recommend(advisor, inp, detrended)
     assert "Réveillon" in advice.recommendation.demand_note
     assert advice.demand.magnitudes_are_lower_bounds is True
+
+
+def _market_with_distance(median_distance: float, n: int = 240, seed: int = 7) -> pd.DataFrame:
+    """`market`-shaped frame with a controlled beach-distance gradient (price falls ~5%/km).
+
+    Structure (neighbourhood/room/size/noise) is drawn BEFORE distance, so two calls with the same
+    seed differ ONLY in distance + the price it drives — isolating the distance effect cleanly.
+    """
+    rng = np.random.default_rng(seed)
+    neighbourhood = rng.choice(["Copacabana", "Ipanema"], size=n, p=[0.6, 0.4])
+    room_type = rng.choice(["Entire home/apt", "Private room"], size=n, p=[0.7, 0.3])
+    accommodates = rng.integers(1, 7, size=n).astype(float)
+    bedrooms = rng.integers(1, 4, size=n).astype(float)
+    bathrooms = rng.choice([1.0, 1.5, 2.0], size=n)
+    min_nights = rng.integers(1, 5, size=n).astype(float)
+    superhost = rng.integers(0, 2, size=n).astype(float)
+    reviews = rng.integers(0, 60, size=n).astype(float)
+    noise = rng.normal(0, 10, size=n)
+    distance = rng.uniform(median_distance - 1.0, median_distance + 1.0, size=n).clip(min=0.0)
+
+    base = np.where(neighbourhood == "Ipanema", 600.0, 420.0)
+    room_adj = np.where(room_type == "Private room", -150.0, 0.0)
+    price = (base + room_adj + accommodates * 55) * np.exp(-0.05 * distance) + noise
+    price = np.clip(price, 90.0, None)
+
+    return pd.DataFrame(
+        {
+            "listing_id": np.arange(n),
+            "price": price,
+            "neighbourhood": neighbourhood,
+            "room_type": room_type,
+            "property_type": "Entire rental unit",
+            "accommodates": accommodates,
+            "bedrooms": bedrooms,
+            "bathrooms_num": bathrooms,
+            "min_nights": min_nights,
+            "host_is_superhost": superhost,
+            "number_of_reviews": reviews,
+            "distance_to_beach_km": distance,
+        }
+    )
+
+
+_NO_COORD_INPUT = HostInput(
+    neighbourhood="Copacabana",
+    room_type="Entire home/apt",
+    property_type="Entire rental unit",
+    accommodates=4,
+    bedrooms=2,
+    bathrooms_num=1.0,
+    min_nights=2,
+    host_is_superhost=True,
+    number_of_reviews=12,
+    current_price=None,
+)
+
+
+def test_recommender_fits_and_uses_distance_when_present(detrended):
+    advisor = fit_advisor(_market_with_distance(median_distance=3.0))
+    assert "distance_to_beach_km" in advisor.fitted.feature_cols  # the fit used the feature
+    advice = recommend(advisor, _NO_COORD_INPUT, detrended)  # coordinate-less input must not raise
+    assert advice.hedonic_price > 0
+
+
+def test_coordinate_less_input_uses_market_median_distance_not_zero(detrended):
+    # The host enters no coordinates. The design row must inherit the market-MEDIAN distance
+    # (median-imputed), NOT 0 ("on the beach") — otherwise every recommendation is biased upward.
+    near = recommend(
+        fit_advisor(_market_with_distance(1.0)), _NO_COORD_INPUT, detrended
+    ).hedonic_price
+    far = recommend(
+        fit_advisor(_market_with_distance(9.0)), _NO_COORD_INPUT, detrended
+    ).hedonic_price
+    # Farther-from-beach market -> the imputed input sits farther -> lower price. If the input were
+    # pinned at distance=0, both markets would predict ~the same hedonic price.
+    assert near > far * 1.03
