@@ -49,14 +49,17 @@ def build_model_matrix(listings: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series,
     rare = nb_counts[nb_counts < config.MIN_NEIGHBOURHOOD_N].index
     neighbourhood = df["neighbourhood"].where(~df["neighbourhood"].isin(rare), "Other")
 
-    numeric = pd.DataFrame(
-        {
-            "accommodates": _to_float64(df["accommodates"]),
-            "bedrooms": _to_float64(df["bedrooms"]),
-            "bathrooms_num": _to_float64(df["bathrooms_num"]),
-            "min_nights": _to_float64(df["min_nights"]),
-        }
-    )
+    numeric_cols = {
+        "accommodates": _to_float64(df["accommodates"]),
+        "bedrooms": _to_float64(df["bedrooms"]),
+        "bathrooms_num": _to_float64(df["bathrooms_num"]),
+        "min_nights": _to_float64(df["min_nights"]),
+    }
+    # Guarded: the live recommender's user input has no coordinates, so it lacks this column.
+    # When absent it is simply not added; when present, NaNs are median-imputed below.
+    if "distance_to_beach_km" in df.columns:
+        numeric_cols["distance_to_beach_km"] = _to_float64(df["distance_to_beach_km"])
+    numeric = pd.DataFrame(numeric_cols)
     numeric = numeric.fillna(numeric.median(numeric_only=True))
     # An all-NULL column has a NaN median, so fillna is a no-op and NaN leaks into the OLS design
     # (statsmodels would silently drop rows or error). Fail loudly at the feature boundary instead.

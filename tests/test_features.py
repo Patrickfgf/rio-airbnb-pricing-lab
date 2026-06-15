@@ -88,3 +88,17 @@ def test_all_null_numeric_column_raises(toy_listings):
     bad["bathrooms_num"] = np.nan
     with pytest.raises(ValueError, match="entirely NULL"):
         build_model_matrix(bad)
+
+
+def test_distance_to_beach_enters_design_matrix(toy_listings):
+    df = toy_listings.assign(distance_to_beach_km=1.0)
+    X, _y, _meta = build_model_matrix(df)
+    assert "distance_to_beach_km" in X.columns
+    assert X["distance_to_beach_km"].notna().all()  # median-imputed, never NaN in the design
+
+
+def test_build_matrix_works_without_distance_column(toy_listings):
+    # Guard: callers (e.g. the live recommender's user input) may lack the column.
+    df = toy_listings.drop(columns=["distance_to_beach_km"], errors="ignore")
+    X, _y, _meta = build_model_matrix(df)  # must not raise
+    assert "distance_to_beach_km" not in X.columns
