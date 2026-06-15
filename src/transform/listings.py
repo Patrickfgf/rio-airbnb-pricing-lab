@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.config import PRICE_WINSOR_LOWER_Q, PRICE_WINSOR_UPPER_Q
+from src.config import PRICE_WINSOR_LOWER_Q, PRICE_WINSOR_UPPER_Q, RIO_BEACHES
 from src.transform.clean_price import clean_price
+from src.transform.geo import distance_to_nearest_beach_km
 from src.transform.parse_fields import parse_bathrooms, parse_percent, parse_tf_bool
 
 # Optional columns kept only if the dump provides them (schema-flexible).
@@ -37,6 +38,14 @@ def build_curated_listings(raw: pd.DataFrame) -> pd.DataFrame:
             "beds": pd.to_numeric(raw["beds"], errors="coerce").astype("Int64"),
             "bathrooms_num": parse_bathrooms(raw["bathrooms_text"]),
             "price": clean_price(raw["price"]),
+            "distance_to_beach_km": pd.Series(
+                distance_to_nearest_beach_km(
+                    pd.to_numeric(raw["latitude"], errors="coerce").to_numpy(),
+                    pd.to_numeric(raw["longitude"], errors="coerce").to_numpy(),
+                    RIO_BEACHES,
+                ),
+                index=raw.index,
+            ).astype("float64"),
             "min_nights": pd.to_numeric(raw["minimum_nights"], errors="coerce").astype("Int64"),
             "host_is_superhost": parse_tf_bool(raw["host_is_superhost"]),
             "instant_bookable": parse_tf_bool(raw["instant_bookable"]),
