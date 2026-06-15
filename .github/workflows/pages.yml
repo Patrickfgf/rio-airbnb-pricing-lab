@@ -38,6 +38,8 @@ jobs:
           mkdir -p _site
           cp docs/index.html _site/index.html
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true       # self-enable Pages on first run instead of failing
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

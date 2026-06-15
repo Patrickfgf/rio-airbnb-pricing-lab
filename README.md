@@ -58,8 +58,8 @@ The point of the project, enforced in tested `src/` code (the UI carries no busi
 
 - 🖥️ **Live dashboard:** **[rio-airbnb-pricing-lab-project.streamlit.app](https://rio-airbnb-pricing-lab-project.streamlit.app/)** — filters + the per-listing price recommender, live on Streamlit Community Cloud.
 - 📓 **Narrated EDA notebook:** [`notebooks/eda.ipynb`](notebooks/eda.ipynb) — market shape →
-  neighbourhood map → seasonality → hedonic drivers → the re-scope. Outputs stripped for a clean
-  diff; run it locally for the figures.
+  neighbourhood map → seasonality → hedonic drivers → the re-scope. Rendered with outputs, so the
+  figures show inline on GitHub; runs clean top-to-bottom (`Restart & Run All`).
 - 📊 **Decision report (PT-BR):** [`reports/decision_report.md`](reports/decision_report.md) —
   per-persona positioning for Rio hosts.
 - 📒 **Caderno de bordo (PT-BR study log):** the living [GitHub Pages site](https://patrickfgf.github.io/rio-airbnb-pricing-lab/)

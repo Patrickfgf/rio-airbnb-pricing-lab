@@ -61,8 +61,8 @@ O ponto do projeto, garantido em código testado em `src/` (a UI não carrega l�
 
 - 🖥️ **Dashboard ao vivo:** **[rio-airbnb-pricing-lab-project.streamlit.app](https://rio-airbnb-pricing-lab-project.streamlit.app/)** — filtros + o recomendador de preço por anúncio, no ar no Streamlit Community Cloud.
 - 📓 **Notebook de EDA narrado:** [`notebooks/eda.ipynb`](notebooks/eda.ipynb) — forma do mercado →
-  mapa de bairros → sazonalidade → drivers hedônicos → o re-scope. Outputs removidos para um diff
-  limpo; rode localmente para ver as figuras.
+  mapa de bairros → sazonalidade → drivers hedônicos → o re-scope. Renderizado com outputs, então as
+  figuras aparecem inline no GitHub; roda limpo de cima a baixo (`Restart & Run All`).
 - 📊 **Relatório de decisão (PT-BR):** [`reports/decision_report.md`](reports/decision_report.md) —
   posicionamento por persona para anfitriões do Rio.
 - 📒 **Caderno de bordo (estudo PT-BR):** o [site vivo no GitHub Pages](https://patrickfgf.github.io/rio-airbnb-pricing-lab/)
