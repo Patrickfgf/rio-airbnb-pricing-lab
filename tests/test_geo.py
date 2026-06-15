@@ -1,7 +1,7 @@
 import numpy as np
-from src.transform.geo import distance_to_nearest_beach_km, haversine_km
 
 from src.config import RIO_BEACHES
+from src.transform.geo import distance_to_nearest_beach_km, haversine_km
 
 
 def test_haversine_zero_distance_for_same_point():
